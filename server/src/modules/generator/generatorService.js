@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { appendAuditEvent } from '../audit/auditService.js';
+import { calculateExpectedFeePaise, calculateExpectedTaxPaise } from '../reconciliation/financial.js';
 
 export const CANONICAL_CASE_COUNTS = Object.freeze({
   normal: 120,
@@ -41,9 +42,6 @@ function deterministicUuid(seed, namespace, index) {
 }
 
 function plusDays(iso, days) { const date = new Date(iso); date.setUTCDate(date.getUTCDate() + days); return date.toISOString(); }
-function fee(gross) { return gross / 50; }
-function tax(expectedFee) { return expectedFee * 18 / 100; }
-
 export function generateOrders(database, { batchId, count, seed = 'settlewise-demo', userId, requestId }) {
   if (count !== 150) throw new GeneratorError('GENERATOR_COUNT_INVALID', 'The canonical generator requires exactly 150 orders');
   const batch = database.prepare('SELECT * FROM batches WHERE id = ?').get(batchId);
@@ -61,6 +59,8 @@ export function generateOrders(database, { batchId, count, seed = 'settlewise-de
   const reservedIds = new Set(duplicateSources.map((record) => record.id));
   const regularSources = shuffledCandidates.filter((record) => !reservedIds.has(record.id)).slice(0, 142);
   const cases = shuffle(Object.entries(CANONICAL_CASE_COUNTS).flatMap(([name, amount]) => Array(amount).fill(name)), random);
+  const importedAmounts = new Set(candidates.map((record) => record.amount_paise));
+  let nextMissingGross = Math.max(...importedAmounts) + 2500;
   const now = new Date().toISOString();
   const insertOrder = database.prepare(`INSERT INTO orders
     (id,batch_id,merchant_order_id,order_receipt,gross_amount_paise,refund_amount_paise,expected_fee_paise,expected_tax_paise,expected_net_paise,order_date_utc,currency,generation_case,created_at)
@@ -80,11 +80,14 @@ export function generateOrders(database, { batchId, count, seed = 'settlewise-de
       let refund = 0;
       let orderDateUtc = source.created_at_utc;
       if (generationCase === 'amount_mismatch' || generationCase === 'fee_mismatch' || generationCase === 'tax_mismatch') gross += 2500;
+      if (generationCase === 'missing_settlement') {
+        while (importedAmounts.has(nextMissingGross)) nextMissingGross += 2500;
+        gross = nextMissingGross; importedAmounts.add(gross); nextMissingGross += 2500;
+      }
       if (generationCase === 'date_mismatch') orderDateUtc = plusDays(orderDateUtc, 5);
       if (generationCase === 'missing_reference' || generationCase === 'duplicate_candidate' || generationCase === 'missing_settlement') { merchantOrderId = `SW-MISSING-${seed}-${index}`; orderReceipt = null; }
       if (generationCase === 'refund_mismatch') refund = Math.min(2500, gross);
-      const expectedFee = fee(gross); const expectedTax = tax(expectedFee);
-      if (!Number.isInteger(expectedFee) || !Number.isInteger(expectedTax)) throw new GeneratorError('INVALID_GENERATED_MONEY', 'Generated money must resolve to integer paise');
+      const expectedFee = calculateExpectedFeePaise(gross); const expectedTax = calculateExpectedTaxPaise(expectedFee);
       insertOrder.run({ id, batchId, merchantOrderId, orderReceipt, gross, refund, expectedFee, expectedTax, expectedNet: gross - expectedFee - expectedTax - refund, orderDateUtc, generationCase, createdAt: now });
       insertTruth.run(id, generationCase === 'missing_settlement' ? null : source.id, generationCase === 'missing_settlement' ? 0 : 1, generationCase === 'normal' ? 0 : 1, generationCase, now);
     }

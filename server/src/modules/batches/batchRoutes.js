@@ -8,6 +8,7 @@ import { fetchSettlementSchema } from '../ingestion/schemas.js';
 import { importCsv, importRazorpay } from '../ingestion/ingestionService.js';
 import { generateOrdersSchema } from '../generator/schemas.js';
 import { generateOrders } from '../generator/generatorService.js';
+import { reconcileBatch } from '../reconciliation/reconcileBatch.js';
 
 export function createBatchRouter(database, { razorpayClient }) {
   const router = Router();
@@ -32,6 +33,10 @@ export function createBatchRouter(database, { razorpayClient }) {
   });
   router.post('/:batchId/orders/generate', validateBody(generateOrdersSchema), (req, res, next) => {
     try { res.status(201).json({ data: generateOrders(database, { batchId: req.params.batchId, ...req.validatedBody, userId: req.user.id, requestId: req.requestId }), meta: {} }); }
+    catch (error) { next(error); }
+  });
+  router.post('/:batchId/reconcile', (req, res, next) => {
+    try { res.json({ data: reconcileBatch(database, { batchId: req.params.batchId, userId: req.user.id, requestId: req.requestId }), meta: {} }); }
     catch (error) { next(error); }
   });
   return router;
