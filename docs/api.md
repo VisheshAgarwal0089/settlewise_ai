@@ -1,10 +1,16 @@
-# Phase 0–1 API
+# Phase 0–2 API
 
 - `GET /health`
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/logout`
 - `GET /api/v1/auth/me`
 - `GET /api/v1/audit-logs/verify`
+- `POST /api/v1/batches`
+- `GET /api/v1/batches/:batchId`
+- `POST /api/v1/batches/:batchId/settlements/fetch`
+- `POST /api/v1/batches/:batchId/settlements/upload`
+- `POST /api/v1/batches/:batchId/orders/generate`
 
 Responses use the specification's success and error envelopes.
 
+The generator response includes counts and case distribution only. Hidden `evaluation_truth` rows have no API route and are never serialized.

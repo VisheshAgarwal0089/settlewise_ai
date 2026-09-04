@@ -10,10 +10,12 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { requireAuth } from './middleware/auth.js';
 import { createAuthRouter } from './modules/auth/authRoutes.js';
 import { verifyAuditChain } from './modules/audit/auditService.js';
+import { createBatchRouter } from './modules/batches/batchRoutes.js';
+import { razorpayClient as defaultRazorpayClient } from './providers/razorpayClient.js';
 
 const mutating = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-export function createApp(database) {
+export function createApp(database, { razorpayClient = defaultRazorpayClient } = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.use(requestId);
@@ -36,9 +38,9 @@ export function createApp(database) {
   });
   app.use('/api/v1/auth', createAuthRouter(database));
   app.use('/api/v1', requireAuth, rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false }));
+  app.use('/api/v1/batches', createBatchRouter(database, { razorpayClient }));
   app.get('/api/v1/audit-logs/verify', (req, res) => res.json({ data: verifyAuditChain(database, req.query.batchId), meta: {} }));
   app.use(notFound);
   app.use(errorHandler);
   return app;
 }
-

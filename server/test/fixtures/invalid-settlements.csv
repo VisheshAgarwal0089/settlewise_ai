@@ -1,0 +1,3 @@
+entity_id,type,amount,currency,fee,tax,credit,debit,settled,created_at,settled_at,settlement_id,settlement_utr,order_id,order_receipt,payment_id
+pay_invalid_001,payment,100000,USD,2000,360,97640,0,1,1788451200,1788537600,setl_invalid_001,UTRINVALID001,order_invalid_001,receipt_invalid_001,pay_invalid_001
+

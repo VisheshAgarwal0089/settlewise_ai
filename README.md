@@ -1,6 +1,6 @@
 # SettleWise AI
 
-Phase 0 and Phase 1 of the verification-first finance controller: npm workspaces, React/Vite shell, Express ESM API, validated environment, SQLite migrations, one seeded bcrypt login, JWT cookie authentication, protected frontend routes, health check, and SHA-256 audit chain.
+Phases 0–2 of the verification-first finance controller: npm workspaces, React/Vite shell, Express ESM API, validated environment, SQLite migrations, one seeded bcrypt login, JWT cookie authentication, protected frontend routes, health check, SHA-256 audit chain, Razorpay Recon ingestion, atomic CSV fallback, and deterministic synthetic order generation.
 
 ## Setup
 
@@ -14,5 +14,4 @@ npm test
 npm run build
 ```
 
-Only Phases 0–1 are implemented. Ingestion, generation, reconciliation, review actions, AI explanations, and exports remain intentionally out of scope for this phase.
-
+Phases 0–2 are implemented. Reconciliation, review actions, AI explanations, and exports remain intentionally out of scope. `evaluation_truth` is stored separately for later held-out evaluation and is not exposed through API responses.

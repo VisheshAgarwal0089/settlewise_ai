@@ -1,0 +1,4 @@
+entity_id,type,amount,currency,fee,tax,credit,debit,settled,created_at,settled_at,settlement_id,settlement_utr,order_id,order_receipt,payment_id
+pay_duplicate,payment,100000,INR,2000,360,97640,0,1,1788451200,1788537600,setl_001,UTR001,order_001,receipt_001,pay_duplicate
+pay_duplicate,payment,102500,INR,2050,369,100081,0,1,1788451200,1788537600,setl_002,UTR002,order_002,receipt_002,pay_duplicate
+
