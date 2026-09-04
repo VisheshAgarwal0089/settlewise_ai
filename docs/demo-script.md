@@ -1,4 +1,3 @@
 # Demo script
 
-Phase 0–1 establishes the repository, validated configuration, database, login, protected routes, health check, and audit-chain verification. Ingestion and reconciliation begin in Phase 2.
-
+Phases 0–4 establish repository contracts, authentication, ingestion, deterministic generation and reconciliation, transactional review actions, advisory anomaly explanations, safe CSV export, and exact-confirmation reset. Groq output never changes financial state.

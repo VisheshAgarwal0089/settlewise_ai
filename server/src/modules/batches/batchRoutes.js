@@ -9,6 +9,7 @@ import { importCsv, importRazorpay } from '../ingestion/ingestionService.js';
 import { generateOrdersSchema } from '../generator/schemas.js';
 import { generateOrders } from '../generator/generatorService.js';
 import { reconcileBatch } from '../reconciliation/reconcileBatch.js';
+import { exportBatchCsv } from '../exports/exportService.js';
 
 export function createBatchRouter(database, { razorpayClient }) {
   const router = Router();
@@ -38,6 +39,14 @@ export function createBatchRouter(database, { razorpayClient }) {
   router.post('/:batchId/reconcile', (req, res, next) => {
     try { res.json({ data: reconcileBatch(database, { batchId: req.params.batchId, userId: req.user.id, requestId: req.requestId }), meta: {} }); }
     catch (error) { next(error); }
+  });
+  router.get('/:batchId/export.csv', (req, res, next) => {
+    try {
+      const result = exportBatchCsv(database, { batchId: req.params.batchId, userId: req.user.id, requestId: req.requestId });
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`);
+      res.send(result.content);
+    } catch (error) { next(error); }
   });
   return router;
 }

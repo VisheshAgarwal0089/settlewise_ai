@@ -12,10 +12,13 @@ import { createAuthRouter } from './modules/auth/authRoutes.js';
 import { verifyAuditChain } from './modules/audit/auditService.js';
 import { createBatchRouter } from './modules/batches/batchRoutes.js';
 import { razorpayClient as defaultRazorpayClient } from './providers/razorpayClient.js';
+import { groqClient as defaultGroqClient } from './providers/groqClient.js';
+import { createReviewRouter } from './modules/reviews/reviewRoutes.js';
+import { createResetRouter } from './modules/exports/resetRoutes.js';
 
 const mutating = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-export function createApp(database, { razorpayClient = defaultRazorpayClient } = {}) {
+export function createApp(database, { razorpayClient = defaultRazorpayClient, groqClient = defaultGroqClient } = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.use(requestId);
@@ -39,6 +42,8 @@ export function createApp(database, { razorpayClient = defaultRazorpayClient } =
   app.use('/api/v1/auth', createAuthRouter(database));
   app.use('/api/v1', requireAuth, rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false }));
   app.use('/api/v1/batches', createBatchRouter(database, { razorpayClient }));
+  app.use('/api/v1/matches', createReviewRouter(database, { groqClient }));
+  app.use('/api/v1/data', createResetRouter(database));
   app.get('/api/v1/audit-logs/verify', (req, res) => res.json({ data: verifyAuditChain(database, req.query.batchId), meta: {} }));
   app.use(notFound);
   app.use(errorHandler);
