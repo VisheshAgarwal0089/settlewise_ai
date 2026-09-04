@@ -105,6 +105,26 @@ describe('export and reset', () => {
 });
 
 describe('Phase 4 API routes', () => {
+  it('serves Phase 5 batch, record, review detail and audit views from database state', async () => {
+    const database = databaseFixture(); phase4Fixture(database);
+    const app = createApp(database);
+    const token = jwt.sign({ id: 'user-1', email: 'admin@settlewise.local' }, env.JWT_SECRET, { algorithm: 'HS256', expiresIn: '1h' });
+    const authenticated = (path) => request(app).get(path).set('Cookie', `${SESSION_COOKIE}=${token}`);
+    const batches = await authenticated('/api/v1/batches?page=1&pageSize=10');
+    expect(batches.status).toBe(200); expect(batches.body.meta).toMatchObject({ page: 1, pageSize: 10, total: 1 });
+    expect(batches.body.data[0].metrics).toBeDefined();
+    const records = await authenticated('/api/v1/batches/batch-1/records?status=pending_review&case=amount_mismatch&page=1&pageSize=1');
+    expect(records.status).toBe(200); expect(records.body.meta.filters).toEqual({ status: 'pending_review', case: 'amount_mismatch', search: null });
+    expect(records.body.data).toHaveLength(1); expect(JSON.stringify(records.body)).not.toContain('evaluation_truth');
+    const queue = await authenticated('/api/v1/batches/batch-1/review-queue?page=1&pageSize=10');
+    expect(queue.status).toBe(200); expect(queue.body.data).toHaveLength(2); expect(queue.body.data[0].deterministicEvidence).toBeDefined();
+    const detail = await authenticated('/api/v1/matches/match-approve');
+    expect(detail.status).toBe(200); expect(detail.body.data.deterministicEvidence).toBeDefined(); expect(detail.body.data.aiExplanation).toBeNull();
+    const logs = await authenticated('/api/v1/audit-logs?batchId=batch-1');
+    expect(logs.status).toBe(200); expect(logs.body.data).toEqual([]);
+    const verification = await authenticated('/api/v1/audit-logs/verify?batchId=batch-1');
+    expect(verification.body.data).toEqual({ valid: true, checkedEvents: 0 });
+  });
   it('exposes review, explanation, export and exact reset through authenticated routes', async () => {
     const database = databaseFixture(); phase4Fixture(database);
     const groqClient = { explain: async () => ({ model: env.GROQ_MODEL, content: '{"category":"amount_mismatch","summary":"Amounts differ.","recommendedAction":"Review evidence."}' }) };

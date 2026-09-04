@@ -1,3 +1,10 @@
 import { apiClient } from '../lib/apiClient.js';
-export const getBatches = () => apiClient('/api/v1/batches');
-
+const query = (params = {}) => new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '' && value != null)).toString();
+export const getBatches = (params) => apiClient(`/api/v1/batches?${query(params)}`);
+export const getBatch = (batchId) => apiClient(`/api/v1/batches/${batchId}`);
+export const createBatch = (input) => apiClient('/api/v1/batches', { method: 'POST', body: JSON.stringify(input) });
+export const fetchSettlements = (batchId, input) => apiClient(`/api/v1/batches/${batchId}/settlements/fetch`, { method: 'POST', body: JSON.stringify(input) });
+export const uploadSettlements = (batchId, file) => { const body = new FormData(); body.append('file', file); return apiClient(`/api/v1/batches/${batchId}/settlements/upload`, { method: 'POST', body }); };
+export const generateOrders = (batchId, input) => apiClient(`/api/v1/batches/${batchId}/orders/generate`, { method: 'POST', body: JSON.stringify(input) });
+export const reconcile = (batchId) => apiClient(`/api/v1/batches/${batchId}/reconcile`, { method: 'POST', body: '{}' });
+export const resetAllData = (confirmation) => apiClient('/api/v1/data', { method: 'DELETE', body: JSON.stringify({ confirmation }) });

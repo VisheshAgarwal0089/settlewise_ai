@@ -33,6 +33,15 @@ function serializeMatch(database, matchId) {
   return { id: row.id, batchId: row.batch_id, orderId: row.order_id, settlementRecordId: row.settlement_record_id, status: row.status, confidenceScore: row.confidence_score, matchedBy: row.matched_by, expectedNetPaise: row.expected_net_paise, actualNetPaise: row.actual_net_paise, variancePaise: row.variance_paise, reasonCodes: JSON.parse(row.reason_codes_json), evidence: JSON.parse(row.evidence_json), reviewNote: row.review_note, updatedAt: row.updated_at };
 }
 
+export function getMatchDetail(database, matchId) {
+  const row = currentMatch(database, matchId);
+  const order = database.prepare(`SELECT id,merchant_order_id,order_receipt,gross_amount_paise,refund_amount_paise,expected_fee_paise,expected_tax_paise,expected_net_paise,order_date_utc,generation_case FROM orders WHERE id=?`).get(row.order_id);
+  const explanation = database.prepare('SELECT status,model,category,summary,recommended_action,error_code,created_at,completed_at FROM ai_explanations WHERE match_id=? ORDER BY created_at DESC LIMIT 1').get(matchId) ?? null;
+  const candidates = JSON.parse(row.evidence_json).rankedCandidates ?? [];
+  const settlements = candidates.length ? database.prepare(`SELECT id,entity_id,order_id,order_receipt,amount_paise,fee_paise,tax_paise,settled_at_utc FROM settlement_records WHERE id IN (${candidates.map(() => '?').join(',')})`).all(...candidates.map((candidate) => candidate.settlementRecordId)) : [];
+  return { ...serializeMatch(database, matchId), order: { id: order.id, merchantOrderId: order.merchant_order_id, orderReceipt: order.order_receipt, grossAmountPaise: order.gross_amount_paise, refundAmountPaise: order.refund_amount_paise, expectedFeePaise: order.expected_fee_paise, expectedTaxPaise: order.expected_tax_paise, expectedNetPaise: order.expected_net_paise, orderDateUtc: order.order_date_utc, generationCase: order.generation_case }, deterministicEvidence: JSON.parse(row.evidence_json), candidateSettlements: settlements.map((item) => ({ id: item.id, entityId: item.entity_id, orderId: item.order_id, orderReceipt: item.order_receipt, amountPaise: item.amount_paise, feePaise: item.fee_paise, taxPaise: item.tax_paise, settledAtUtc: item.settled_at_utc })), aiExplanation: explanation ? { status: explanation.status, model: explanation.model, category: explanation.category, summary: explanation.summary, recommendedAction: explanation.recommended_action, errorCode: explanation.error_code, createdAt: explanation.created_at, completedAt: explanation.completed_at } : null };
+}
+
 export function approveMatch(database, { matchId, userId, note, requestId }) {
   return database.transaction(() => {
     const match = currentMatch(database, matchId);

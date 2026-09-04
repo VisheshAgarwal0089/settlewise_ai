@@ -9,7 +9,7 @@ import { requestId } from './middleware/requestId.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { requireAuth } from './middleware/auth.js';
 import { createAuthRouter } from './modules/auth/authRoutes.js';
-import { verifyAuditChain } from './modules/audit/auditService.js';
+import { createAuditRouter } from './modules/audit/auditRoutes.js';
 import { createBatchRouter } from './modules/batches/batchRoutes.js';
 import { razorpayClient as defaultRazorpayClient } from './providers/razorpayClient.js';
 import { groqClient as defaultGroqClient } from './providers/groqClient.js';
@@ -44,7 +44,7 @@ export function createApp(database, { razorpayClient = defaultRazorpayClient, gr
   app.use('/api/v1/batches', createBatchRouter(database, { razorpayClient }));
   app.use('/api/v1/matches', createReviewRouter(database, { groqClient }));
   app.use('/api/v1/data', createResetRouter(database));
-  app.get('/api/v1/audit-logs/verify', (req, res) => res.json({ data: verifyAuditChain(database, req.query.batchId), meta: {} }));
+  app.use('/api/v1/audit-logs', createAuditRouter(database));
   app.use(notFound);
   app.use(errorHandler);
   return app;

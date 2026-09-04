@@ -3,7 +3,7 @@ import multer from 'multer';
 import { env } from '../../config/env.js';
 import { validateBody } from '../../middleware/validate.js';
 import { createBatchSchema } from './schemas.js';
-import { createBatch, getBatch } from './batchService.js';
+import { createBatch, getBatch, listBatches, listRecords, listReviewQueue } from './batchService.js';
 import { fetchSettlementSchema } from '../ingestion/schemas.js';
 import { importCsv, importRazorpay } from '../ingestion/ingestionService.js';
 import { generateOrdersSchema } from '../generator/schemas.js';
@@ -15,6 +15,7 @@ export function createBatchRouter(database, { razorpayClient }) {
   const router = Router();
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: env.MAX_CSV_BYTES, files: 1 } });
   router.post('/', validateBody(createBatchSchema), (req, res) => res.status(201).json({ data: createBatch(database, req.validatedBody), meta: {} }));
+  router.get('/', (req, res) => { const result = listBatches(database, req.query); res.json(result); });
   router.get('/:batchId', (req, res, next) => {
     const batch = getBatch(database, req.params.batchId);
     if (!batch) { const error = new Error('Batch not found'); error.status = 404; error.code = 'BATCH_NOT_FOUND'; return next(error); }
@@ -39,6 +40,12 @@ export function createBatchRouter(database, { razorpayClient }) {
   router.post('/:batchId/reconcile', (req, res, next) => {
     try { res.json({ data: reconcileBatch(database, { batchId: req.params.batchId, userId: req.user.id, requestId: req.requestId }), meta: {} }); }
     catch (error) { next(error); }
+  });
+  router.get('/:batchId/records', (req, res, next) => {
+    try { res.json(listRecords(database, req.params.batchId, req.query)); } catch (error) { next(error); }
+  });
+  router.get('/:batchId/review-queue', (req, res, next) => {
+    try { res.json(listReviewQueue(database, req.params.batchId, req.query)); } catch (error) { next(error); }
   });
   router.get('/:batchId/export.csv', (req, res, next) => {
     try {
