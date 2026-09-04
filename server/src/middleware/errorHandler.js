@@ -7,6 +7,7 @@ export function notFound(req, _res, next) {
 
 export function errorHandler(error, req, res, _next) {
   if (error.code === 'LIMIT_FILE_SIZE') { error.status = 413; error.code = 'CSV_TOO_LARGE'; error.message = 'CSV exceeds the configured size limit'; }
+  if (error.type === 'entity.parse.failed') { error.status = 400; error.code = 'INVALID_JSON'; error.message = 'Request body must contain valid JSON'; }
   const body = { error: {
     code: error.code ?? 'INTERNAL_ERROR',
     message: error.status ? error.message : 'An unexpected error occurred',

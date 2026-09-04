@@ -141,6 +141,7 @@ describe('Phase 4 API routes', () => {
     expect(invalidReset.status).toBe(400); expect(database.prepare('SELECT count(*) count FROM batches').get().count).toBe(1);
     const reset = await authentication(request(app).delete('/api/v1/data')).send({ confirmation: 'RESET ALL DATA' });
     expect(reset.status).toBe(200); expect(reset.body.data.sessionPreserved).toBe(true);
+    expect(JSON.stringify(reset.body)).not.toMatch(/evaluationTruth|evaluation_truth/);
     expect(database.prepare('SELECT count(*) count FROM users').get().count).toBe(1);
   });
 });
