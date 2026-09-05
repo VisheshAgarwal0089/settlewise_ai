@@ -20,6 +20,7 @@ const mutating = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export function createApp(database, { razorpayClient = defaultRazorpayClient, groqClient = defaultGroqClient } = {}) {
   const app = express();
+  app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(requestId);
   app.use(helmet());

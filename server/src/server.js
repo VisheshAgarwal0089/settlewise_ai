@@ -7,11 +7,10 @@ import { createApp } from './app.js';
 const database = openDatabase();
 migrate(database);
 seedAdmin(database);
-const server = createApp(database).listen(env.PORT, () => console.log(`SettleWise API listening on ${env.PORT}`));
+const server = createApp(database).listen(env.PORT, '0.0.0.0', () => console.log(`SettleWise API listening on ${env.PORT}`));
 
 function shutdown() {
   server.close(() => { database.close(); process.exit(0); });
 }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
-
