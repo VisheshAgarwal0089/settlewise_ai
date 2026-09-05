@@ -7,7 +7,7 @@ Verification-first settlement reconciliation for synthetic Razorpay-format data,
 - Application: [https://settlewise-ai.vercel.app](https://settlewise-ai.vercel.app)
 - Backend health: [https://settlewise-api-production.up.railway.app/health](https://settlewise-api-production.up.railway.app/health)
 - Demo email: `admin@settlewise.local`
-- Demo password: provide it with the hackathon submission
+- Demo password: Skills@123
 
 The production password, password hash, JWT secret, and provider credentials are intentionally not stored in this public repository. For a local deployment, generate your own password hash using the setup instructions below.
 
