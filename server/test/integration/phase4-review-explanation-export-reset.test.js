@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../../src/db/connection.js';
 import { migrate } from '../../src/db/migrate.js';
-import { approveMatch, manualLinkMatch, rejectMatch } from '../../src/modules/reviews/reviewService.js';
+import { approveMatch, getMatchDetail, manualLinkMatch, rejectMatch } from '../../src/modules/reviews/reviewService.js';
 import { explainMatch } from '../../src/modules/explanations/explanationService.js';
 import { exportBatchCsv } from '../../src/modules/exports/exportService.js';
 import { resetAllData } from '../../src/modules/exports/resetService.js';
@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
 import { SESSION_COOKIE } from '../../src/config/constants.js';
+import { GroqClient } from '../../src/providers/groqClient.js';
 
 const databases = [];
 afterEach(() => { for (const database of databases.splice(0)) database.close(); });
@@ -22,8 +23,8 @@ function phase4Fixture(database) {
   database.prepare(`INSERT INTO batches (id,name,source_mode,status,requested_count,order_count,settlement_record_count,created_at,updated_at) VALUES ('batch-1','Phase 4','csv','completed',3,3,2,?,?)`).run(now, now);
   database.prepare(`INSERT INTO data_imports (id,batch_id,source,status,record_count,created_at,completed_at) VALUES ('import-1','batch-1','csv_fallback','succeeded',2,?,?)`).run(now, now);
   const insertPayment = database.prepare(`INSERT INTO settlement_records
-    (id,batch_id,import_id,entity_id,type,order_id,payment_id,amount_paise,fee_paise,tax_paise,credit_paise,debit_paise,currency,settled,created_at_utc,settled_at_utc,raw_payload_json,created_at)
-    VALUES (?, 'batch-1','import-1',?,'payment',?,?,100000,2000,360,97640,0,'INR',1,'2026-09-01T00:00:00.000Z','2026-09-02T00:00:00.000Z','{}',?)`);
+    (id,batch_id,import_id,entity_id,type,order_id,payment_id,settlement_id,settlement_utr,amount_paise,fee_paise,tax_paise,credit_paise,debit_paise,currency,settled,created_at_utc,settled_at_utc,raw_payload_json,created_at)
+    VALUES (?, 'batch-1','import-1',?,'payment',?,?,'settlement-1','utr-1',100000,2000,360,97640,0,'INR',1,'2026-09-01T00:00:00.000Z','2026-09-02T00:00:00.000Z','{}',?)`);
   insertPayment.run('pay-1', '=provider-formula', 'order-approve', 'pay-1', now);
   insertPayment.run('pay-2', 'pay-2', 'provider-manual', 'pay-2', now);
   const insertOrder = database.prepare(`INSERT INTO orders
@@ -50,6 +51,7 @@ describe('transactional reviews and immutable audits', () => {
     const rejected = rejectMatch(database, { matchId: 'match-reject', userId: 'user-1', note: 'rejected', requestId: 'req-r' });
     const linked = manualLinkMatch(database, { matchId: 'match-manual', settlementRecordId: 'pay-2', userId: 'user-1', note: 'linked', requestId: 'req-m' });
     expect(approved).toMatchObject({ status: 'matched', matchedBy: 'reviewer', confidenceScore: 65, settlementRecordId: 'pay-1' });
+    expect(getMatchDetail(database, 'match-approve')).toMatchObject({ order: { merchantOrderId: '=cmd-order', expectedFeePaise: 2000, expectedTaxPaise: 360 }, settlement: { id: 'pay-1', paymentId: 'pay-1', settlementUtr: 'utr-1', feePaise: 2000, taxPaise: 360, refundAmountPaise: 0 } });
     expect(rejected).toMatchObject({ status: 'unresolved', matchedBy: 'none', confidenceScore: 60, settlementRecordId: null });
     expect(linked).toMatchObject({ status: 'matched', matchedBy: 'reviewer', settlementRecordId: 'pay-2' });
     expect(database.prepare('SELECT action FROM review_actions ORDER BY rowid').all().map((row) => row.action)).toEqual(['approve', 'reject', 'manual_link']);
@@ -80,6 +82,17 @@ describe('advisory explanations', () => {
     const invalid = await explainMatch(database, { matchId: 'match-approve', client: { explain: async () => ({ model: env.GROQ_MODEL, content: '{"summary":"missing fields"}' }) } });
     expect(invalid).toMatchObject({ status: 'failed', category: 'amount_mismatch', errorCode: 'AI_EXPLANATION_FAILED' });
     expect(invalid.summary).toBe('The order and proposed settlement gross amounts differ.');
+  });
+  it.each([
+    ['missing', undefined, async () => { throw new Error('must not fetch without a key'); }],
+    ['invalid', 'invalid-key', async () => ({ ok: false, status: 401 })]
+  ])('uses deterministic fallback for a %s Groq key without changing match state', async (_name, apiKey, fetchImpl) => {
+    const database = databaseFixture(); phase4Fixture(database);
+    const before = database.prepare("SELECT * FROM matches WHERE id='match-approve'").get();
+    const client = new GroqClient({ fetchImpl, config: { ...env, GROQ_API_KEY: apiKey } });
+    const result = await explainMatch(database, { matchId: 'match-approve', client });
+    expect(result).toMatchObject({ status: 'failed', errorCode: 'AI_EXPLANATION_FAILED', summary: 'The order and proposed settlement gross amounts differ.' });
+    expect(database.prepare("SELECT * FROM matches WHERE id='match-approve'").get()).toEqual(before);
   });
 });
 

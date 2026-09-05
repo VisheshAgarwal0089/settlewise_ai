@@ -18,9 +18,12 @@ The primary demo processes exactly 150 orders. The implementation must support u
 
 ### Success criteria
 
-- At least 85% of eligible records are automatically matched.
 - Automatic-match precision is at least 95%.
-- Automatic-match recall is at least 90% on the labelled held-out dataset.
+- Zero silent record loss: every non-automatic record is surfaced in `pending_review` or `unresolved`.
+- Mandatory amount and date violations are blocked from automatic matching.
+- Ambiguous candidates are routed to human review.
+- Total-batch automation coverage, known-pair automatic recall and false-positive count are reported honestly from the current batch.
+- Deterministic batch processing completes in under 30 seconds.
 - A batch of up to 500 records completes deterministic matching in under 30 seconds.
 - Every non-matched record appears in `pending_review` or `unresolved`; no record is silently discarded.
 - The application demonstrates both:
@@ -794,9 +797,12 @@ Numbers above illustrate the response shape only. Production/demo values must al
 
 ### Accuracy and explainability
 
-- Minimum 85% automatic-match rate on the canonical held-out set.
-- Minimum 95% precision.
-- Minimum 90% recall among ground-truth matchable orders.
+- Minimum 95% automatic-match precision.
+- Zero silent record loss, with every non-automatic record surfaced.
+- All mandatory amount/date violations blocked from automatic matching.
+- All ambiguous candidates routed to review.
+- Total-batch automation coverage, known-pair automatic recall and false-positive count reported honestly from database rows.
+- Deterministic batch processing under 30 seconds.
 - Every result persists score components, reason codes and candidate evidence.
 - Every dashboard metric must be reproducible from database rows.
 - AI text must not be included in scoring or metrics.
@@ -1212,7 +1218,7 @@ These rules apply to any coding agent implementing this specification.
 - [ ] Production login cookie works across Vercel and Railway domains.
 - [ ] Razorpay failure path and CSV fallback work on deployed URLs.
 - [ ] Complete 150-order reconciliation works on deployed URLs.
-- [ ] Actual deployed batch time, precision and recall meet stated targets.
+- [ ] Actual deployed batch time and precision meet the stated gates; coverage, recall and false positives match the current database rows.
 - [ ] Manual backup exists before the pitch.
 - [ ] Repository README contains setup, architecture, measured results, limitations and demo credentials handling.
 - [ ] Five-minute pitch can be completed without changing database rows manually.

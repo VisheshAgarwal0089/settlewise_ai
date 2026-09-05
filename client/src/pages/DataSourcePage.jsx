@@ -12,7 +12,7 @@ export function DataSourcePage() {
   const create = useMutation({ mutationFn: createBatch, onSuccess: async ({ data }) => { active.selectBatch(data.id); setSuccess('Batch created. Try the API import or upload a fallback CSV.'); await refresh(); }, onError: () => setSuccess('') });
   const apiImport = useMutation({ mutationFn: ({ id, input }) => fetchSettlements(id, input), onSuccess: async ({ data }) => { setFallback(null); setSuccess(`API import succeeded with ${data.recordCount} records.`); await refresh(); }, onError: (error) => { setFallback(error); setSuccess(''); } });
   const upload = useMutation({ mutationFn: ({ id, file }) => uploadSettlements(id, file), onSuccess: async ({ data }) => { setSuccess(`CSV fallback imported ${data.recordCount} records atomically.`); setFallback(null); await refresh(); } });
-  const generate = useMutation({ mutationFn: ({ id, seed }) => generateOrders(id, { count: 150, seed: seed || undefined }), onSuccess: async ({ data }) => { setSuccess(`Generated ${data.orderCount} deterministic orders.`); await refresh(); } });
+  const generate = useMutation({ mutationFn: ({ id, seed }) => generateOrders(id, { count: 150, seed: seed || undefined }), onSuccess: async ({ data }) => { setSuccess(`Generated ${data.count} deterministic orders.`); await refresh(); } });
   const run = useMutation({ mutationFn: reconcile, onSuccess: async ({ data }) => { setSuccess(`Reconciliation completed for ${data.counts.total} orders.`); await refresh(); } });
   const busy = create.isPending || apiImport.isPending || upload.isPending || generate.isPending || run.isPending;
   if (active.isPending) return <main><LoadingState /></main>;
